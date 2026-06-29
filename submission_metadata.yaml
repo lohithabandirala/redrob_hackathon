@@ -1,14 +1,14 @@
 # Redrob Hackathon — Submission Metadata
-team_name: "your-team-name-here"
+team_name: "AlgoYodhas"
 
 primary_contact:
-  name: "Your Full Name"
-  email: "your.email@example.com"
-  phone: "+91-XXXXXXXXXX"
+  name: "Bandirala Lohitha"
+  email: "lohithab94@gmail.com"
+  phone: "+91-7995838884"
 
 team_members:
-  - name: "Your Full Name"
-    email: "your.email@example.com"
+  - name: "Bandirala Lohitha"
+    email: "lohithab94@gmail.com"
     role: "ML Engineer"
 
 github_repo: "https://github.com/YOUR_USERNAME/YOUR_REPO"
