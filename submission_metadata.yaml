@@ -12,7 +12,7 @@ team_members:
     role: "ML Engineer"
 
 github_repo: "https://github.com/lohithabandirala/redrob_hackathon"
-sandbox_link: "https://YOUR-APP-URL.streamlit.app"
+sandbox_link: "https://redrob9.streamlit.app/"
 
 reproduce_command: "python hackathon_submission/run_pipeline.py"
 
