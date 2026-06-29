@@ -10,7 +10,18 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from supabase import create_client, Client
 
-st.set_page_config(page_title="Redrob Sandbox", layout="wide")
+def sanitize_and_escape_text(raw_input_string: str) -> str:
+    """
+    Identifies raw dollar symbols inside standard alphanumeric text and 
+    programmatically escapes them to prevent conflicts with Streamlit's LaTeX parser.
+    """
+    if not raw_input_string:
+        return ""
+    # Use a raw string regex pattern to escape literal dollar signs
+    sanitized_text = raw_input_string.replace("$", r"\$")
+    return sanitized_text
+
+st.set_page_config(page_title="Redrob Sandbox", page_icon=":material/analytics:", layout="wide")
 
 st.title("Redrob AI Candidate Ranking Sandbox (Direct-to-Cloud)")
 st.write("This sandbox uses Supabase Direct-to-Cloud uploads to handle massive candidate files seamlessly.")
@@ -130,7 +141,7 @@ custom_html = f"""
 # Render the HTML component
 components.html(custom_html, height=200)
 
-st.write("---")
+st.markdown("<br><br>", unsafe_allow_html=True)
 
 # Use a state variable to track if processing was clicked
 if st.button("Simulate Backend Processing (Run Live ML Pipeline)"):
@@ -222,11 +233,13 @@ if st.button("Simulate Backend Processing (Run Live ML Pipeline)"):
                 # Generate CSV string
                 csv_output = "candidate_id,rank,score,reasoning\n"
                 
-                st.write("### 🏆 Top Candidate Matches")
+                st.write("### :material/workspace_premium: Top Candidate Matches")
                 
                 for rank, (cand, sem_score) in enumerate(results, 1):
                     features = extract_features(cand, JD_REQUIRED_SKILLS)
                     reasoning = generate_reasoning(cand, features, sem_score)
+                    
+                    safe_reasoning = sanitize_and_escape_text(reasoning)
                     
                     final_score = (sem_score * 0.4) + (features['hard_skills_score'] * 0.3) + (features['exp_score'] * 0.15) + (features['behavioral_score'] * 0.15)
                     
@@ -243,16 +256,16 @@ if st.button("Simulate Backend Processing (Run Live ML Pipeline)"):
                                 st.progress(min(max(final_score, 0.0), 1.0))
                                 
                             with col2:
-                                st.info(f"**Why they match:** {reasoning}")
+                                st.info(f"**Why they match:** {safe_reasoning}")
                                 st.button("View Full Profile", key=f"btn_{cand['candidate_id']}", use_container_width=False)
                                 
-                            st.divider()
+                            st.markdown("<br>", unsafe_allow_html=True)
                 
-                st.write("---")
-                st.success("🎉 ML Pipeline finished successfully!")
+                st.markdown("<br><br>", unsafe_allow_html=True)
+                st.success(":material/check_circle: ML Pipeline finished successfully!")
                 
                 st.download_button(
-                    label="⬇️ Download Full submission.csv",
+                    label=":material/download: Download Full submission.csv",
                     data=csv_output,
                     file_name="submission.csv",
                     mime="text/csv"
