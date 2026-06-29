@@ -1,3 +1,7 @@
 streamlit
 pandas
 supabase
+torch
+sentence-transformers
+faiss-cpu
+scikit-learn

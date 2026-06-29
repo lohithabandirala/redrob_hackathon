@@ -2,7 +2,13 @@ import streamlit as st
 import pandas as pd
 import json
 import os
+import sys
 import streamlit.components.v1 as components
+
+# Add parent dir to path to import src
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from supabase import create_client, Client
 
 st.set_page_config(page_title="Redrob Sandbox", layout="wide")
 
@@ -56,7 +62,7 @@ custom_html = f"""
       
       const {{ data, error }} = await supabase.storage
         .from('{BUCKET_NAME}')
-        .upload('uploads/' + file.name, file, {{
+        .upload('uploads/candidates.jsonl', file, {{
           cacheControl: '3600',
           upsert: true
         }})
@@ -78,29 +84,68 @@ custom_html = f"""
 components.html(custom_html, height=200)
 
 st.write("---")
-if st.button("Simulate Backend Processing"):
-    st.info("In a real environment, the Streamlit python backend would now use the `supabase-py` SDK to stream the file from the bucket and run the FAISS ranking pipeline.")
+
+# Use a state variable to track if processing was clicked
+if st.button("Simulate Backend Processing (Run Live ML Pipeline)"):
+    st.info("Downloading file from Supabase and running live ML Inference (WARNING: Will crash if file is > 10MB due to Streamlit RAM limits)...")
     
-    st.write("### 🏆 Top Candidate Matches")
-    
-    # Mock data for demonstration
-    mock_results = [
-        {"id": "CAND_0002025", "rank": 1, "score": 0.95, "reasoning": "Strong semantic match to JD requirements and ideal 5.9 years of experience."},
-        {"id": "CAND_0046064", "rank": 2, "score": 0.90, "reasoning": "High overlap with required tech stack and strong GitHub activity."},
-        {"id": "CAND_0081846", "rank": 3, "score": 0.88, "reasoning": "Ideal location match and highly active profile."}
-    ]
-    
-    for candidate in mock_results:
-        with st.container():
-            st.markdown(f"#### #{candidate['rank']} - {candidate['id']}")
-            col1, col2 = st.columns([1, 4])
+    try:
+        from src.models.semantic import SemanticMatcher
+        from src.features.extractor import extract_features
+        from src.ranker.explainer import generate_reasoning
+        from src.features.honeypot import is_honeypot
+        from src.config import JD_TEXT, JD_REQUIRED_SKILLS
+        
+        # Download from Supabase
+        supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        response = supabase_client.storage.from_(BUCKET_NAME).download("uploads/candidates.jsonl")
+        
+        # Parse downloaded bytes
+        candidates = []
+        for line in response.decode('utf-8').splitlines():
+            if line.strip():
+                candidates.append(json.loads(line))
+                
+        st.success(f"Downloaded and parsed {len(candidates)} candidates.")
+        
+        # Initialize models
+        with st.spinner("Initializing SentenceTransformer (this takes a moment)..."):
+            matcher = SemanticMatcher()
             
-            with col1:
-                st.metric(label="Match Score", value=f"{int(candidate['score'] * 100)}%")
-                st.progress(candidate['score'])
+        with st.spinner("Embedding candidates and running FAISS index..."):
+            valid_cands = [c for c in candidates if not is_honeypot(c)]
+            
+            if not valid_cands:
+                st.error("No valid candidates found (all were honeypots or file was empty).")
+            else:
+                # Build index
+                matcher.build_index(valid_cands)
                 
-            with col2:
-                st.info(f"**Why they match:** {candidate['reasoning']}")
-                st.button("View Full Profile", key=candidate['id'], use_container_width=False)
+                # Search
+                results = matcher.search(JD_TEXT, top_k=min(10, len(valid_cands)))
                 
-            st.divider()
+                st.write("### 🏆 Top Candidate Matches")
+                
+                for rank, (cand, sem_score) in enumerate(results, 1):
+                    features = extract_features(cand, JD_REQUIRED_SKILLS)
+                    reasoning = generate_reasoning(cand, features, sem_score)
+                    
+                    final_score = (sem_score * 0.4) + (features['hard_skills_score'] * 0.3) + (features['exp_score'] * 0.15) + (features['behavioral_score'] * 0.15)
+                    
+                    with st.container():
+                        st.markdown(f"#### #{rank} - {cand['candidate_id']}")
+                        col1, col2 = st.columns([1, 4])
+                        
+                        with col1:
+                            st.metric(label="Match Score", value=f"{int(final_score * 100)}%")
+                            st.progress(min(max(final_score, 0.0), 1.0))
+                            
+                        with col2:
+                            st.info(f"**Why they match:** {reasoning}")
+                            st.button("View Full Profile", key=f"btn_{cand['candidate_id']}", use_container_width=False)
+                            
+                        st.divider()
+                        
+    except Exception as e:
+        st.error(f"Error during ML processing: {str(e)}")
+        st.warning("If you see an 'Out of Memory' error or connection drop, the uploaded file was too large for Streamlit Community Cloud.")
