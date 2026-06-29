@@ -94,7 +94,12 @@ if st.button("Simulate Backend Processing (Run Live ML Pipeline)"):
         from src.features.extractor import extract_features
         from src.ranker.explainer import generate_reasoning
         from src.features.honeypot import is_honeypot
-        from src.config import JD_TEXT, JD_REQUIRED_SKILLS
+        from src.data_loader import get_jd_text
+        
+        JD_TEXT = get_jd_text()
+        JD_REQUIRED_SKILLS = {"python", "elasticsearch", "faiss", "pinecone", "weaviate", "qdrant", 
+                              "milvus", "opensearch", "machine learning", "nlp", "llm", 
+                              "sentence-transformers", "bge", "e5", "ndcg", "mrr", "map", "a/b test"}
         
         # Download from Supabase
         supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
