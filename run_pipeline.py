@@ -30,12 +30,32 @@ def main():
     
     for cand in stream_candidates(config.CANDIDATES_PATH):
         if not is_honeypot(cand):
-            # Pre-filter: Must have at least 1 relevant skill
+            profile = cand.get("profile", {})
+            exp = profile.get("years_of_experience", 0)
+            
+            # The JD strictly requires 5-9 years, with slight flexibility.
+            # We filter out anyone with < 4 years to aggressively prune the search space.
+            if exp < 4:
+                continue
+                
             skills = cand.get("skills", [])
             cand_skills = {s.get("name", "").lower() for s in skills}
             
-            # Check for AI/ML/IR relevance
-            if cand_skills.intersection(jd_skills):
+            # Must have Python
+            text_blob = profile.get("summary", "").lower()
+            for job in cand.get("career_history", []):
+                text_blob += " " + job.get("title", "").lower() + " " + job.get("description", "").lower()
+            
+            has_python = "python" in cand_skills or "python" in text_blob
+            if not has_python:
+                continue
+                
+            # Must have explicit vector DB or embedding tech mentioned
+            vector_techs = ["pinecone", "weaviate", "qdrant", "milvus", "opensearch", "elasticsearch", "faiss", "sentence-transformers", "bge", "e5", "openai embeddings"]
+            
+            has_vector_tech = any(tech in cand_skills for tech in vector_techs) or any(tech in text_blob for tech in vector_techs)
+            
+            if has_vector_tech:
                 valid_candidates.append(cand)
             
     print(f"Pre-filtered to {len(valid_candidates)} candidates with relevant skills.")
