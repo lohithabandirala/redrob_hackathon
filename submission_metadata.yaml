@@ -11,7 +11,7 @@ team_members:
     email: "lohithab94@gmail.com"
     role: "ML Engineer"
 
-github_repo: "https://github.com/YOUR_USERNAME/YOUR_REPO"
+github_repo: "https://github.com/lohithabandirala/redrob_hackathon"
 sandbox_link: "https://YOUR-APP-URL.streamlit.app"
 
 reproduce_command: "python hackathon_submission/run_pipeline.py"
