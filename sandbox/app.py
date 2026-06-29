@@ -37,28 +37,71 @@ custom_html = f"""
     body {{ font-family: sans-serif; color: white; }}
     .upload-btn {{ background: #ff4b4b; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }}
     .upload-btn:hover {{ background: #ff3333; }}
+    .upload-btn:disabled {{ background: #666; cursor: not-allowed; }}
+    
+    .loader {{
+      border: 4px solid #444;
+      border-top: 4px solid #ff4b4b;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 10px;
+    }}
+    
+    @keyframes spin {{
+      0% {{ transform: rotate(0deg); }}
+      100% {{ transform: rotate(360deg); }}
+    }}
+    
+    #status-container {{
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 5px;
+      display: none;
+      align-items: center;
+      background-color: rgba(0,0,0,0.2);
+    }}
   </style>
 </head>
 <body>
-  <p>Select your 350MB JSONL file to upload directly to Supabase:</p>
+  <p>Select your JSONL file to upload directly to Supabase:</p>
   <input type="file" id="fileInput" accept=".jsonl" />
-  <button class="upload-btn" onclick="uploadFile()">Direct Upload to Cloud</button>
-  <p id="status"></p>
+  <button id="uploadBtn" class="upload-btn" onclick="uploadFile()">Direct Upload to Cloud</button>
+  
+  <div id="status-container">
+    <div id="spinner" class="loader"></div>
+    <span id="status" style="font-weight: bold;"></span>
+  </div>
 
   <script>
     const supabase = supabase.createClient('{SUPABASE_URL}', '{SUPABASE_KEY}')
     
     async function uploadFile() {{
       const fileInput = document.getElementById('fileInput');
+      const statusContainer = document.getElementById('status-container');
       const status = document.getElementById('status');
+      const spinner = document.getElementById('spinner');
+      const uploadBtn = document.getElementById('uploadBtn');
       
       if (!fileInput.files || fileInput.files.length === 0) {{
-        status.innerText = 'Please select a file first.';
+        statusContainer.style.display = 'flex';
+        spinner.style.display = 'none';
+        status.innerText = '⚠️ Please select a file first.';
+        status.style.color = '#ffaa00';
         return;
       }}
       
       const file = fileInput.files[0];
-      status.innerText = 'Uploading directly to Supabase... please wait.';
+      
+      // Show loading state
+      uploadBtn.disabled = true;
+      statusContainer.style.display = 'flex';
+      spinner.style.display = 'inline-block';
+      status.innerText = 'Uploading ' + (file.size / (1024*1024)).toFixed(1) + ' MB... Please do not close this window.';
+      status.style.color = 'white';
       
       const {{ data, error }} = await supabase.storage
         .from('{BUCKET_NAME}')
@@ -67,11 +110,15 @@ custom_html = f"""
           upsert: true
         }})
         
+      // Handle response
+      uploadBtn.disabled = false;
+      spinner.style.display = 'none';
+        
       if (error) {{
-        status.innerText = 'Error: ' + error.message;
+        status.innerText = '❌ Error: ' + error.message;
         status.style.color = '#ff4b4b';
       }} else {{
-        status.innerText = 'Upload Complete! ✅ File safely stored in Supabase.';
+        status.innerText = '✅ Upload Complete! File safely stored in Supabase.';
         status.style.color = '#00cc66';
       }}
     }}
