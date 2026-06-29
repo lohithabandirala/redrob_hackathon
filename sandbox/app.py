@@ -81,10 +81,26 @@ st.write("---")
 if st.button("Simulate Backend Processing"):
     st.info("In a real environment, the Streamlit python backend would now use the `supabase-py` SDK to stream the file from the bucket and run the FAISS ranking pipeline.")
     
-    st.write("Sample output structure:")
-    st.dataframe(pd.DataFrame({
-        "candidate_id": ["CAND_12345", "CAND_67890"],
-        "rank": [1, 2],
-        "score": [0.95, 0.90],
-        "reasoning": ["Strong semantic match", "High experience fit"]
-    }))
+    st.write("### 🏆 Top Candidate Matches")
+    
+    # Mock data for demonstration
+    mock_results = [
+        {"id": "CAND_0002025", "rank": 1, "score": 0.95, "reasoning": "Strong semantic match to JD requirements and ideal 5.9 years of experience."},
+        {"id": "CAND_0046064", "rank": 2, "score": 0.90, "reasoning": "High overlap with required tech stack and strong GitHub activity."},
+        {"id": "CAND_0081846", "rank": 3, "score": 0.88, "reasoning": "Ideal location match and highly active profile."}
+    ]
+    
+    for candidate in mock_results:
+        with st.container():
+            st.markdown(f"#### #{candidate['rank']} - {candidate['id']}")
+            col1, col2 = st.columns([1, 4])
+            
+            with col1:
+                st.metric(label="Match Score", value=f"{int(candidate['score'] * 100)}%")
+                st.progress(candidate['score'])
+                
+            with col2:
+                st.info(f"**Why they match:** {candidate['reasoning']}")
+                st.button("View Full Profile", key=candidate['id'], use_container_width=False)
+                
+            st.divider()
